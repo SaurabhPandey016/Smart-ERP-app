@@ -1,0 +1,38 @@
+{
+  "name": "smarterp-server",
+  "version": "1.0.0",
+  "description": "SmartERP Backend API",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "nodemon src/app.js",
+    "test": "vitest",
+    "start": "node src/app.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.2",
+    "express-async-errors": "^3.1.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.11.0",
+    "pdfkit": "^0.15.2",
+    "prisma": "^7.8.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  ,
+    "vitest": "^1.0.0",
+    "supertest": "^6.3.3"
+  }
+}

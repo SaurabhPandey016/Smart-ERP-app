@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Connection URLs are managed via prisma.config.js for Prisma v7+
+}
+
+enum LedgerType {
+  CUSTOMER
+  SUPPLIER
+  EXPENSE
+  INCOME
+  BANK
+  CASH
+}
+
+enum VoucherType {
+  SALES
+  PURCHASE
+  RECEIPT
+  PAYMENT
+  CONTRA
+  CREDIT_NOTE
+  DEBIT_NOTE
+}
+
+enum VoucherStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum InventoryLogType {
+  STOCK_IN
+  STOCK_OUT
+  TRANSFER
+  ADJUSTMENT
+  DAMAGED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  companies    Company[]
+}
+
+model Company {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  address       String?
+  gstNumber     String?
+  financialYear String         @default("2024-25")
+  state         String?
+  phone         String?
+  email         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  ledgers       Ledger[]
+  stockItems    StockItem[]
+  units         Unit[]
+  vouchers      Voucher[]
+  inventoryLogs InventoryLog[]
+
+  @@index([userId])
+}
+
+model Ledger {
+  id             String      @id @default(cuid())
+  companyId      String
+  company        Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  type           LedgerType
+  openingBalance Decimal     @default(0) @db.Decimal(15, 2)
+  balance        Decimal     @default(0) @db.Decimal(15, 2)
+  phone          String?
+  email          String?
+  address        String?
+  gstNumber      String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  vouchers       Voucher[]
+
+  @@unique([companyId, name])
+  @@index([companyId, type])
+}
+
+model Unit {
+  id         String      @id @default(cuid())
+  companyId  String
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  symbol     String
+  createdAt  DateTime    @default(now())
+  stockItems StockItem[]
+
+  @@unique([companyId, name])
+}
+
+model StockItem {
+  id            String         @id @default(cuid())
+  companyId     String
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String
+  sku           String?
+  purchasePrice Decimal        @default(0) @db.Decimal(15, 2)
+  sellingPrice  Decimal        @default(0) @db.Decimal(15, 2)
+  currentStock  Decimal        @default(0) @db.Decimal(15, 3)
+  reservedStock Decimal        @default(0) @db.Decimal(15, 3)
+  damagedStock  Decimal        @default(0) @db.Decimal(15, 3)
+  gstPercent    Decimal        @default(0) @db.Decimal(5, 2)
+  unitId        String?
+  unit          Unit?          @relation(fields: [unitId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  voucherItems  VoucherItem[]
+  inventoryLogs InventoryLog[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Voucher {
+  id            String         @id @default(cuid())
+  companyId     String
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type          VoucherType
+  number        String
+  date          DateTime
+  partyLedgerId String?
+  partyLedger   Ledger?        @relation(fields: [partyLedgerId], references: [id])
+  totalAmount   Decimal        @default(0) @db.Decimal(15, 2)
+  taxAmount     Decimal        @default(0) @db.Decimal(15, 2)
+  netAmount     Decimal        @default(0) @db.Decimal(15, 2)
+  notes         String?
+  status        VoucherStatus  @default(POSTED)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         VoucherItem[]
+  inventoryLogs InventoryLog[]
+
+  @@unique([companyId, type, number])
+  @@index([companyId, type])
+  @@index([companyId, date])
+}
+
+model VoucherItem {
+  id          String     @id @default(cuid())
+  voucherId   String
+  voucher     Voucher    @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  stockItemId String?
+  stockItem   StockItem? @relation(fields: [stockItemId], references: [id])
+  description String?
+  quantity    Decimal    @db.Decimal(15, 3)
+  rate        Decimal    @db.Decimal(15, 2)
+  amount      Decimal    @db.Decimal(15, 2)
+  gstPercent  Decimal    @default(0) @db.Decimal(5, 2)
+  gstAmount   Decimal    @default(0) @db.Decimal(15, 2)
+  totalAmount Decimal    @db.Decimal(15, 2)
+
+  @@index([voucherId])
+}
+
+model InventoryLog {
+  id           String           @id @default(cuid())
+  companyId    String
+  company      Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockItemId  String
+  stockItem    StockItem        @relation(fields: [stockItemId], references: [id])
+  voucherId    String?
+  voucher      Voucher?         @relation(fields: [voucherId], references: [id])
+  type         InventoryLogType
+  quantity     Decimal          @db.Decimal(15, 3)
+  balanceAfter Decimal          @db.Decimal(15, 3)
+  notes        String?
+  createdAt    DateTime         @default(now())
+
+  @@index([companyId, stockItemId])
+  @@index([companyId, createdAt])
+}
