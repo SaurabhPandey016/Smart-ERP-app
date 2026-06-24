@@ -1,33 +1,123 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore, useUIStore } from '@/lib/store';
 
+/**
+ * ShortcutHandler — global keyboard shortcut listener.
+ * Renders nothing. Mounted once at the app-layout level.
+ *
+ * Global shortcuts (always active):
+ *   CTRL+H       → Dashboard
+ *   CTRL+Q       → Logout
+ *
+ * Navigation shortcuts (skipped when typing in input/textarea/select):
+ *   F8           → Vouchers — Sales
+ *   F9           → Vouchers — Purchase
+ *   ALT+L        → Open Create Ledger modal
+ *   ALT+S        → Open Create Stock Item modal
+ *   CTRL+N       → Open Create Stock Item modal
+ *   CTRL+B       → Open Create Sales Voucher modal
+ *   ALT+F8       → Open Create Sales Voucher modal
+ *   ALT+F9       → Open Create Purchase Voucher modal
+ *   CTRL+P       → PDF download (page handles this)
+ *   ESC          → Go back
+ */
 export default function ShortcutHandler() {
   const router = useRouter();
+  const { logout } = useAuthStore();
+  const { openLedgerModal, openStockModal, openVoucherModal } = useUIStore();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.ctrlKey && e.key.toLowerCase() === 'h') {
+      const tag = (document.activeElement as HTMLElement)?.tagName ?? '';
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+      // ── Always-active global shortcuts
+      if (e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'h') {
         e.preventDefault();
         router.push('/dashboard');
+        return;
       }
-      if (e.altKey && e.key.toLowerCase() === 'l') {
+
+      if (e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'q') {
         e.preventDefault();
-        router.push('/ledgers');
+        logout();
+        router.push('/login');
+        return;
       }
-      if (!e.altKey && !e.ctrlKey && e.key === 'F8') {
+
+      // ── Skip rest when user is typing
+      if (isTyping) return;
+
+      // ── Voucher navigation
+      if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.key === 'F8') {
         e.preventDefault();
+        openVoucherModal('SALES');
         router.push('/vouchers');
+        return;
       }
-      if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+
+      if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.key === 'F9') {
         e.preventDefault();
-        router.push('/stock');
+        openVoucherModal('PURCHASE');
+        router.push('/vouchers');
+        return;
+      }
+
+      // ── ALT combos
+      if (e.altKey && !e.ctrlKey) {
+        if (e.key.toLowerCase() === 'l') {
+          e.preventDefault();
+          openLedgerModal();
+          router.push('/ledgers');
+          return;
+        }
+        if (e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          openStockModal();
+          router.push('/stock');
+          return;
+        }
+        if (e.key === 'F8') {
+          e.preventDefault();
+          openVoucherModal('SALES');
+          router.push('/vouchers');
+          return;
+        }
+        if (e.key === 'F9') {
+          e.preventDefault();
+          openVoucherModal('PURCHASE');
+          router.push('/vouchers');
+          return;
+        }
+      }
+
+      // ── CTRL combos
+      if (e.ctrlKey && !e.altKey) {
+        if (e.key.toLowerCase() === 'n') {
+          e.preventDefault();
+          openStockModal();
+          router.push('/stock');
+          return;
+        }
+        if (e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          openVoucherModal('SALES');
+          router.push('/vouchers');
+          return;
+        }
+      }
+
+      // ── Escape — go back
+      if (e.key === 'Escape') {
+        router.back();
       }
     }
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [router]);
+  }, [router, logout, openLedgerModal, openStockModal, openVoucherModal]);
 
   return null;
 }

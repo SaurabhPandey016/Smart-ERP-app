@@ -22,7 +22,7 @@ export const useAuthStore = create(
         if (typeof window !== 'undefined') {
           localStorage.removeItem('smarterp_token');
           localStorage.removeItem('smarterp_user');
-          localStorage.removeItem('smarterp_company');
+          localStorage.removeItem('smarterp-company');
         }
       },
 
@@ -50,3 +50,20 @@ export const useCompanyStore = create(
     },
   ),
 );
+
+// ── UI Store — controls which modals are open (driven by ShortcutHandler)
+export const useUIStore = create((set) => ({
+  ledgerModalOpen: false,
+  stockModalOpen: false,
+  voucherModalOpen: false,
+  voucherModalTab: 'SALES', // 'SALES' | 'PURCHASE'
+
+  openLedgerModal: () => set({ ledgerModalOpen: true }),
+  closeLedgerModal: () => set({ ledgerModalOpen: false }),
+
+  openStockModal: () => set({ stockModalOpen: true }),
+  closeStockModal: () => set({ stockModalOpen: false }),
+
+  openVoucherModal: (tab) => set({ voucherModalOpen: true, voucherModalTab: tab || 'SALES' }),
+  closeVoucherModal: () => set({ voucherModalOpen: false }),
+}));

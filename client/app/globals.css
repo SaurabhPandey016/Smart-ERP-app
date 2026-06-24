@@ -52,7 +52,6 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
 }
 
 /* ── Scrollbar */
@@ -437,6 +436,12 @@ code, kbd, .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
 
 .select option { background: var(--bg-card); }
 
+.textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: 'Inter', sans-serif;
+}
+
 .form-group { display: flex; flex-direction: column; gap: 5px; }
 
 .form-label {
@@ -628,20 +633,18 @@ tbody tr:hover { background: var(--bg-hover); }
 
 .line-items-row:last-child { border-bottom: none; }
 
-/* ── Keyboard-friendly interaction — cursor hidden, focus states enhanced */
-/* App works best with keyboard navigation on desktop/PC */
-body {
-  cursor: none; /* hide mouse cursor for cleaner keyboard-focused interface */
-}
-
-/* Make focus states obvious for keyboard users */
+/* ── Keyboard-friendly focus states */
 button:focus, input:focus, select:focus, textarea:focus, a:focus {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Accessibility: ensure keyboard-only interaction is smooth */
 :focus { scroll-margin-top: 80px; }
 
-/* Note: App is optimized for keyboard navigation on desktop/PC screens */
-/* All content is visible and accessible on every screen size */
+/* ── Login/Companies full-screen layout */
+.auth-screen {
+  min-height: 100vh;
+  overflow: auto;
+  display: flex;
+  background: var(--bg-primary);
+}
