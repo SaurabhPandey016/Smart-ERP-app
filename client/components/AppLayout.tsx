@@ -78,45 +78,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* ── User panel */}
-        <div
-          style={{
-            padding: '12px 16px',
-            borderTop: '1px solid var(--border)',
-            marginTop: 'auto',
-          }}
-        >
+        <div className="flex flex-col gap-2 px-4 py-3 mt-auto" style={{ borderTop: '1px solid var(--border)' }}>
           {user && (
-            <div
-              style={{
-                fontSize: 11,
-                color: 'var(--text-muted)',
-                marginBottom: 8,
-                lineHeight: 1.4,
-              }}
-            >
-              <div style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+            <div className="flex flex-col gap-0.5">
+              <div className="text-[12px] font-semibold truncate" style={{ color: 'var(--text-secondary)' }}>
                 {user.name}
               </div>
-              <div>{user.email}</div>
+              <div className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>{user.email}</div>
             </div>
           )}
           <button
-            className="btn btn-ghost"
-            style={{
-              width: '100%',
-              justifyContent: 'center',
-              fontSize: 11,
-              padding: '5px',
-            }}
+            className="btn btn-ghost w-full justify-between text-[11px] px-2 py-1.5"
             onClick={() => {
               logout();
               router.push('/login');
             }}
           >
-            Sign Out
-            <span className="nav-shortcut" style={{ marginLeft: 'auto' }}>
-              CTRL+Q
-            </span>
+            <span>Sign Out</span>
+            <span className="nav-shortcut">CTRL+Q</span>
           </button>
         </div>
       </aside>

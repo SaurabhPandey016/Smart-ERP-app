@@ -7,22 +7,26 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach JWT token to every request
+// Attach JWT token from cookie to every request
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('smarterp_token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|; )smarterp_token=([^;]*)/);
+    if (match) {
+      try { config.headers.Authorization = `Bearer ${decodeURIComponent(match[1])}`; } catch {}
+    }
   }
   return config;
 });
 
-// Handle 401 globally — redirect to login
+// Handle 401 globally — clear cookie and redirect to login
 api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('smarterp_token');
-      localStorage.removeItem('smarterp_user');
+      // Clear auth cookies
+      document.cookie = 'smarterp_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+      document.cookie = 'smarterp-auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+      document.cookie = 'smarterp-company=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
       window.location.href = '/login';
     }
     return Promise.reject(error);

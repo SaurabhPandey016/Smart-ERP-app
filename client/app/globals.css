@@ -101,23 +101,30 @@ code, kbd, .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
 .erp-layout {
   display: flex;
   height: 100vh;
+  width: 100vw;
   overflow: hidden;
+  position: relative;
 }
 
 .erp-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   margin-left: var(--sidebar-width);
+  height: 100vh;
+  overflow: hidden;
 }
 
 .erp-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  overflow-x: hidden;
+  padding: 20px 24px;
   background: var(--bg-primary);
-  margin-bottom: var(--shortcut-bar-height);
+  /* Exact height: viewport minus topbar minus shortcut bar */
+  height: calc(100vh - var(--topbar-height) - var(--shortcut-bar-height));
+  /* padding-bottom ensures last item isn't hidden under shortcut bar */
+  padding-bottom: calc(var(--shortcut-bar-height) + 20px);
 }
 
 /* ── Sidebar */
@@ -634,7 +641,7 @@ tbody tr:hover { background: var(--bg-hover); }
 .line-items-row:last-child { border-bottom: none; }
 
 /* ── Keyboard-friendly focus states */
-button:focus, input:focus, select:focus, textarea:focus, a:focus {
+button:focus-visible, input:focus, select:focus, textarea:focus, a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -644,7 +651,13 @@ button:focus, input:focus, select:focus, textarea:focus, a:focus {
 /* ── Login/Companies full-screen layout */
 .auth-screen {
   min-height: 100vh;
-  overflow: auto;
-  display: flex;
+  width: 100%;
+  display: block;
   background: var(--bg-primary);
+  overflow-y: auto;
+}
+
+/* ── Monospace utility */
+.mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }

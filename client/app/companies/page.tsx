@@ -1,11 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { companyAPI } from '@/lib/api';
 import { useAuthStore, useCompanyStore } from '@/lib/store';
 import { INDIAN_STATES } from '@/lib/utils';
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 interface Company {
   id: string;
@@ -30,28 +32,70 @@ interface CompanyFormValues {
 
 const FINANCIAL_YEARS = ['2022-23', '2023-24', '2024-25', '2025-26', '2026-27'];
 
+// ── Component ──────────────────────────────────────────────────────────────
+
 export default function CompaniesPage() {
   const router = useRouter();
-  const { token, user } = useAuthStore();
-  const { selectCompany, clearCompany } = useCompanyStore();
+  const { token, user, logout } = useAuthStore();
+  const { selectCompany } = useCompanyStore();
 
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [companies, setCompanies]   = useState<Company[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState(false);
+  const [deleting, setDeleting]     = useState<string | null>(null);
+  const [showModal, setShowModal]   = useState(false);
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [focusedIdx, setFocusedIdx] = useState(0);
+  const cardRefs                    = useRef<(HTMLDivElement | null)[]>([]);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CompanyFormValues>({
-    defaultValues: { name: '', address: '', gstNumber: '', financialYear: '2024-25', state: '', phone: '', email: '' },
-  });
+  const { register, handleSubmit, reset, formState: { errors } } =
+    useForm<CompanyFormValues>({
+      defaultValues: {
+        name: '', address: '', gstNumber: '',
+        financialYear: '2024-25', state: '', phone: '', email: '',
+      },
+    });
 
+  // ── Auth guard ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!token) { router.push('/login'); return; }
     fetchCompanies();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // ── Keyboard navigation ─────────────────────────────────────────────────
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+      if (showModal) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, companies.length - 1));
+      }
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, 0));
+      }
+      if (e.key === 'Enter' && companies[focusedIdx]) {
+        handleSelect(companies[focusedIdx]);
+      }
+      if ((e.key === 'n' || e.key === 'N') && companies.length < 5) {
+        openCreate();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies, focusedIdx, showModal]);
+
+  // Move DOM focus to focused card
+  useEffect(() => {
+    cardRefs.current[focusedIdx]?.focus({ preventScroll: false });
+  }, [focusedIdx]);
+
+  // ── Fetch ───────────────────────────────────────────────────────────────
   async function fetchCompanies() {
     setLoading(true);
     try {
@@ -64,26 +108,25 @@ export default function CompaniesPage() {
     }
   }
 
+  // ── Modal helpers ───────────────────────────────────────────────────────
   function openCreate() {
     setEditingId(null);
     reset({ name: '', address: '', gstNumber: '', financialYear: '2024-25', state: '', phone: '', email: '' });
     setShowModal(true);
   }
 
-  function openEdit(c: Company) {
+  function openEdit(c: Company, e: React.MouseEvent) {
+    e.stopPropagation();
     setEditingId(c.id);
     reset({
-      name: c.name,
-      address: c.address ?? '',
-      gstNumber: c.gstNumber ?? '',
-      financialYear: c.financialYear,
-      state: c.state ?? '',
-      phone: c.phone ?? '',
-      email: c.email ?? '',
+      name: c.name, address: c.address ?? '', gstNumber: c.gstNumber ?? '',
+      financialYear: c.financialYear, state: c.state ?? '',
+      phone: c.phone ?? '', email: c.email ?? '',
     });
     setShowModal(true);
   }
 
+  // ── CRUD ────────────────────────────────────────────────────────────────
   const onSubmit: SubmitHandler<CompanyFormValues> = async (data) => {
     setSaving(true);
     try {
@@ -95,24 +138,25 @@ export default function CompaniesPage() {
         toast.success('Company created');
       }
       setShowModal(false);
-      fetchCompanies();
+      await fetchCompanies();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to save company';
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to save';
       toast.error(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this company? All its data will be permanently removed.')) return;
+  async function handleDelete(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm('Delete this company? All data will be permanently removed.')) return;
     setDeleting(id);
     try {
       await companyAPI.delete(id);
       toast.success('Company deleted');
-      fetchCompanies();
+      await fetchCompanies();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete company';
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete';
       toast.error(msg);
     } finally {
       setDeleting(null);
@@ -125,198 +169,289 @@ export default function CompaniesPage() {
     router.push('/dashboard');
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg-primary)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px 20px',
-      }}
-    >
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 40 }}>
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
-            borderRadius: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 24,
-            fontWeight: 800,
-            color: 'white',
-            margin: '0 auto 16px',
-            boxShadow: '0 0 24px rgba(99,102,241,0.4)',
-          }}
-        >
-          S
-        </div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
-          Gateway of SmartERP
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-          Welcome, <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{user?.name}</span>. Select or create a company to continue.
-        </p>
-      </div>
+    <div className="flex min-h-screen w-full bg-[var(--bg-primary)] overflow-auto">
 
-      {/* Company list + create */}
-      <div style={{ width: '100%', maxWidth: 680 }}>
-        {/* Top bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-              {companies.length}/5 companies
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {companies.length < 5 && (
-              <button className="btn btn-primary" onClick={openCreate}>
-                + New Company
-              </button>
-            )}
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: 12 }}
-              onClick={() => {
-                clearCompany();
-                useAuthStore.getState().logout();
-                router.push('/login');
-              }}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-
-        {/* Max limit warning */}
-        {companies.length >= 5 && (
+      {/* ── Left panel — branding ─────────────────────────────────────────── */}
+      <div
+        className="flex flex-col sticky top-0 h-screen shrink-0"
+        style={{
+          width: 300,
+          background: 'var(--bg-secondary)',
+          borderRight: '1px solid var(--border)',
+          padding: '36px 28px',
+        }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-10">
           <div
+            className="flex items-center justify-center shrink-0 font-extrabold text-white rounded-xl"
             style={{
-              padding: '10px 14px',
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              borderRadius: 8,
-              fontSize: 12,
-              color: 'var(--warning)',
-              marginBottom: 16,
+              width: 40, height: 40, fontSize: 18,
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))',
+              boxShadow: '0 0 20px rgba(99,102,241,0.35)',
             }}
           >
-            ⚠ Maximum 5 companies allowed per account. Delete one to create a new company.
+            S
+          </div>
+          <div>
+            <div className="font-bold text-[15px]" style={{ color: 'var(--text-primary)' }}>SmartERP</div>
+            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Gateway</div>
+          </div>
+        </div>
+
+        {/* Headline */}
+        <div className="mb-auto">
+          <h1
+            className="font-bold leading-tight mb-3"
+            style={{ fontSize: 22, color: 'var(--text-primary)' }}
+          >
+            Select your<br />
+            <span style={{ color: 'var(--accent-light)' }}>Company</span>
+          </h1>
+          <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Choose a company to open, or create a new one. Each company has its own ledgers, vouchers and stock.
+          </p>
+
+          {/* Keyboard hints */}
+          <div
+            className="mt-7 rounded-lg p-3"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            <div
+              className="text-[10px] font-semibold uppercase tracking-wider mb-3"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              ⌨ Keyboard shortcuts
+            </div>
+            {[
+              ['↑ ↓', 'Navigate companies'],
+              ['ENTER', 'Open selected'],
+              ['N', 'New company'],
+              ['ESC', 'Close modal'],
+            ].map(([key, label]) => (
+              <div key={key} className="flex justify-between items-center mb-2">
+                <span
+                  className="mono text-[10px] px-1.5 py-0.5 rounded"
+                  style={{
+                    color: 'var(--accent-light)',
+                    background: 'var(--bg-active)',
+                    border: '1px solid var(--border-light)',
+                  }}
+                >
+                  {key}
+                </span>
+                <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* User info + logout */}
+        <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>Signed in as</div>
+          <div className="font-semibold text-[13px] mb-3" style={{ color: 'var(--text-primary)' }}>
+            {user?.name}
+            <span className="font-normal ml-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              {user?.email}
+            </span>
+          </div>
+          <button
+            className="btn btn-ghost w-full justify-center text-[12px]"
+            onClick={() => { logout(); router.push('/login'); }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+
+      {/* ── Right panel — company list ────────────────────────────────────── */}
+      <div className="flex-1 p-10 overflow-y-auto">
+
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="font-bold text-[17px]" style={{ color: 'var(--text-primary)' }}>
+              Your Companies
+            </div>
+            <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {loading ? 'Loading…' : `${companies.length} / 5 companies`}
+            </div>
+          </div>
+          {companies.length < 5 && (
+            <button className="btn btn-primary" onClick={openCreate} title="Press N">
+              + New Company
+              <span
+                className="mono text-[10px] ml-2 px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}
+              >
+                N
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* Max warning */}
+        {companies.length >= 5 && (
+          <div
+            className="flex items-center gap-2 rounded-lg px-4 py-2.5 mb-5 text-[12px]"
+            style={{
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.25)',
+              color: 'var(--warning)',
+            }}
+          >
+            ⚠ Maximum 5 companies per account. Delete one to create a new company.
           </div>
         )}
 
-        {/* Loading */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>⟳</div>
-            Loading companies...
+        {/* Skeletons */}
+        {loading && (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton rounded-xl" style={{ height: 88 }} />
+            ))}
           </div>
-        ) : companies.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: 48 }}>
-            <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>🏢</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+        )}
+
+        {/* Empty state */}
+        {!loading && companies.length === 0 && (
+          <div
+            className="flex flex-col items-center justify-center text-center rounded-xl py-16"
+            style={{ border: '2px dashed var(--border)' }}
+          >
+            <div className="text-5xl mb-4 opacity-30">🏢</div>
+            <div className="font-semibold text-[16px] mb-2" style={{ color: 'var(--text-secondary)' }}>
               No companies yet
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-              Create your first company to get started with SmartERP
+            <div className="text-[13px] mb-6" style={{ color: 'var(--text-muted)' }}>
+              Create your first company to start using SmartERP
             </div>
             <button className="btn btn-primary" onClick={openCreate}>
               + Create Company
             </button>
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {companies.map((c) => (
-              <div
-                key={c.id}
-                className="card"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: '14px 18px',
-                  transition: 'border-color 0.2s',
-                }}
-              >
-                {/* Icon */}
+        )}
+
+        {/* Company cards ── NOTE: outer is a <div role="button">, NOT a <button> */}
+        {!loading && companies.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {companies.map((c, idx) => {
+              const isFocused = focusedIdx === idx;
+              return (
                 <div
+                  key={c.id}
+                  ref={(el) => { cardRefs.current[idx] = el; }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open company ${c.name}`}
+                  onClick={() => handleSelect(c)}
+                  onFocus={() => setFocusedIdx(idx)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelect(c);
+                    }
+                  }}
+                  className="flex items-center gap-4 rounded-xl cursor-pointer outline-none transition-all"
                   style={{
-                    width: 44,
-                    height: 44,
-                    background: 'var(--accent-glow)',
-                    border: '1px solid var(--accent)',
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 18,
-                    flexShrink: 0,
+                    padding: '14px 18px',
+                    background: isFocused ? 'var(--accent-glow)' : 'var(--bg-card)',
+                    border: `1px solid ${isFocused ? 'var(--accent)' : 'var(--border)'}`,
+                    boxShadow: isFocused ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
+                    userSelect: 'none',
                   }}
                 >
-                  🏢
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
-                    {c.name}
+                  {/* Avatar */}
+                  <div
+                    className="flex items-center justify-center shrink-0 rounded-xl text-lg transition-all"
+                    style={{
+                      width: 46, height: 46,
+                      background: isFocused
+                        ? 'linear-gradient(135deg, var(--accent), var(--accent-dark))'
+                        : 'var(--bg-hover)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    🏢
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {c.address && <span>📍 {c.address}</span>}
-                    {c.gstNumber && <span>🔖 GSTIN: {c.gstNumber}</span>}
-                    <span>📅 FY {c.financialYear}</span>
-                    {c.state && <span>🗺 {c.state}</span>}
+
+                  {/* Company info */}
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="font-bold text-[14px] mb-1 truncate"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {c.name}
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      <span
+                        className="mono text-[10px] px-1.5 py-0.5 rounded"
+                        style={{
+                          background: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--accent-light)',
+                        }}
+                      >
+                        FY {c.financialYear}
+                      </span>
+                      {c.gstNumber && <span>GSTIN: {c.gstNumber}</span>}
+                      {c.state && <span>📍 {c.state}</span>}
+                      {c.phone && <span>📞 {c.phone}</span>}
+                    </div>
+                  </div>
+
+                  {/* Action buttons — these are NOT inside a <button>, so nesting is valid */}
+                  <div
+                    className="flex gap-2 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={(e) => openEdit(c, e)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={(e) => handleDelete(c.id, e)}
+                      disabled={deleting === c.id}
+                    >
+                      {deleting === c.id ? '…' : 'Delete'}
+                    </button>
+                  </div>
+
+                  {/* Arrow */}
+                  <div
+                    className="shrink-0 text-lg transition-colors"
+                    style={{ color: isFocused ? 'var(--accent-light)' : 'var(--text-muted)' }}
+                  >
+                    →
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleSelect(c)}
-                  >
-                    Open
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => openEdit(c)}
-                    style={{ padding: '7px 10px' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => handleDelete(c.id)}
-                    disabled={deleting === c.id}
-                    style={{ padding: '7px 10px' }}
-                  >
-                    {deleting === c.id ? '...' : 'Del'}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ── Create / Edit Modal */}
+      {/* ── Create / Edit Modal ─────────────────────────────────────────────── */}
       {showModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+        <div
+          className="modal-overlay"
+          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
+        >
           <div className="modal" style={{ maxWidth: 540 }}>
             <div className="modal-header">
               <div className="modal-title">
                 {editingId ? '✏️ Edit Company' : '🏢 Create Company'}
               </div>
               <button
-                className="btn btn-ghost btn-icon"
+                className="btn btn-ghost"
                 onClick={() => setShowModal(false)}
-                style={{ padding: '4px 8px', fontSize: 18 }}
+                style={{ padding: '4px 10px', fontSize: 20 }}
+                aria-label="Close modal"
               >
                 ×
               </button>
@@ -324,12 +459,15 @@ export default function CompaniesPage() {
 
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <div className="grid grid-cols-2 gap-3">
+
+                  {/* Full-width name */}
+                  <div className="form-group col-span-2">
                     <label className="form-label">Company Name *</label>
                     <input
                       className="input"
                       placeholder="e.g. Rahul Traders Pvt. Ltd."
+                      autoFocus
                       {...register('name', { required: 'Company name is required' })}
                     />
                     {errors.name && <span className="form-error">{errors.name.message}</span>}
@@ -337,19 +475,13 @@ export default function CompaniesPage() {
 
                   <div className="form-group">
                     <label className="form-label">GST Number</label>
-                    <input
-                      className="input"
-                      placeholder="e.g. 27AABCU9603R1ZM"
-                      {...register('gstNumber')}
-                    />
+                    <input className="input" placeholder="27AABCU9603R1ZM" {...register('gstNumber')} />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Financial Year</label>
                     <select className="input select" {...register('financialYear')}>
-                      {FINANCIAL_YEARS.map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
+                      {FINANCIAL_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
 
@@ -357,32 +489,21 @@ export default function CompaniesPage() {
                     <label className="form-label">State</label>
                     <select className="input select" {...register('state')}>
                       <option value="">— Select State —</option>
-                      {INDIAN_STATES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
+                      {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Phone</label>
-                    <input
-                      className="input"
-                      placeholder="e.g. +91 98765 43210"
-                      {...register('phone')}
-                    />
+                    <input className="input" placeholder="+91 98765 43210" {...register('phone')} />
                   </div>
 
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <div className="form-group col-span-2">
                     <label className="form-label">Email</label>
-                    <input
-                      className="input"
-                      type="email"
-                      placeholder="business@company.com"
-                      {...register('email')}
-                    />
+                    <input className="input" type="email" placeholder="business@company.com" {...register('email')} />
                   </div>
 
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <div className="form-group col-span-2">
                     <label className="form-label">Address</label>
                     <textarea
                       className="input textarea"
@@ -395,15 +516,11 @@ export default function CompaniesPage() {
               </div>
 
               <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowModal(false)}
-                >
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : editingId ? 'Update Company' : 'Create Company'}
+                  {saving ? 'Saving…' : editingId ? 'Update Company' : 'Create Company'}
                 </button>
               </div>
             </form>
