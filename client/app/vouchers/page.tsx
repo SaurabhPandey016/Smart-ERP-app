@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, useWatch, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { voucherAPI, ledgerAPI, stockAPI } from '@/lib/api';
-import { useAuthStore, useCompanyStore, useUIStore } from '@/lib/store';
+import { useUIStore } from '@/lib/store';
 import { formatCurrency, formatDate, downloadBlob } from '@/lib/utils';
+import { useProtectedPage } from '@/lib/useProtectedPage';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -108,12 +109,12 @@ const DEFAULT_ITEM: VoucherLineItem = {
 
 export default function VouchersPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
-  const { selectedCompany } = useCompanyStore();
+  const { ready, selectedCompany } = useProtectedPage();
   const { voucherModalOpen, voucherModalTab, closeVoucherModal } = useUIStore();
 
   const [vouchers, setVouchers]     = useState<Voucher[]>([]);
   const [customers, setCustomers]   = useState<Ledger[]>([]);
+  const [focusedIdx, setFocusedIdx] = useState(0);
   const [suppliers, setSuppliers]   = useState<Ledger[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -166,13 +167,11 @@ export default function VouchersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voucherModalOpen]);
 
-  // ── Auth guard ─────────────────────────────────────────────────────────
+  // ── Fetch on ready ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!token)           { router.push('/login');     return; }
-    if (!selectedCompany) { router.push('/companies'); return; }
-    fetchAll();
+    if (ready) fetchAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCompany, token]);
+  }, [ready]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -304,7 +303,76 @@ export default function VouchersPage() {
     }
   }
 
-  if (!selectedCompany) return null;
+  // Bounds check focusedIdx when filtered changes
+  useEffect(() => {
+    setFocusedIdx(0);
+  }, [filtered.length]);
+
+  // ── Keyboard navigation ──────────────────────────────────────────────────
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+      // Escape to unfocus or close modals
+      if (e.key === 'Escape') {
+        if (showModal) {
+          setShowModal(false);
+          e.stopPropagation();
+        } else if (isTyping) {
+          (document.activeElement as HTMLElement)?.blur();
+        }
+        return;
+      }
+
+      if (isTyping) return;
+      if (showModal) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, filtered.length - 1));
+      }
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, 0));
+      }
+      // Enter or P/p to download PDF
+      if (e.key === 'Enter' || e.key.toLowerCase() === 'p') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          handleDownloadPDF(item);
+        }
+      }
+      // C/c to cancel voucher
+      if (e.key.toLowerCase() === 'c') {
+        const item = filtered[focusedIdx];
+        if (item && item.status === 'POSTED') {
+          e.preventDefault();
+          handleCancel(item.id);
+        }
+      }
+      // ArrowLeft/ArrowRight to switch tabs
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const tabKeys: VoucherTab[] = ['SALES', 'PURCHASE', 'ALL'];
+        const currIdx = tabKeys.indexOf(activeTab);
+        const nextIdx = currIdx === 0 ? tabKeys.length - 1 : currIdx - 1;
+        setActiveTab(tabKeys[nextIdx]);
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const tabKeys: VoucherTab[] = ['SALES', 'PURCHASE', 'ALL'];
+        const currIdx = tabKeys.indexOf(activeTab);
+        const nextIdx = currIdx === tabKeys.length - 1 ? 0 : currIdx + 1;
+        setActiveTab(tabKeys[nextIdx]);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filtered, focusedIdx, showModal, activeTab]);
+
+  if (!ready || !selectedCompany) return null;
 
   return (
     <div className="animate-fade-in">
@@ -420,8 +488,8 @@ export default function VouchersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((v) => (
-                <tr key={v.id}>
+              {filtered.map((v, index) => (
+                <tr key={v.id} className={focusedIdx === index ? 'focused-row' : ''}>
                   <td>
                     <span className="mono" style={{ fontSize: 12, color: 'var(--accent-light)', fontWeight: 600 }}>
                       {v.number}

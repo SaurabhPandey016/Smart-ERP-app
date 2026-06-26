@@ -1,10 +1,12 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCompanyStore, useAuthStore, useUIStore } from '@/lib/store';
+import { useCompanyStore, useUIStore } from '@/lib/store';
 import { inventoryAPI, ledgerAPI, voucherAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useState } from 'react';
+import { useProtectedPage } from '@/lib/useProtectedPage';
 
 interface Stats {
   customers: number;
@@ -46,14 +48,14 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const router       = useRouter();
-  const { token }    = useAuthStore();
-  const { selectedCompany } = useCompanyStore();
+  const router = useRouter();
+  const { ready, selectedCompany } = useProtectedPage();
   const { openLedgerModal, openStockModal, openVoucherModal } = useUIStore();
 
-  const [stats, setStats]       = useState<Stats | null>(null);
-  const [recent, setRecent]     = useState<RecentVoucher[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [stats, setStats]     = useState<Stats | null>(null);
+  const [recent, setRecent]   = useState<RecentVoucher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [focusedIdx, setFocusedIdx] = useState(-1);
 
   const load = useCallback(async () => {
     if (!selectedCompany) return;
@@ -66,12 +68,10 @@ export default function DashboardPage() {
         ledgerAPI(cid).list('SUPPLIER'),
         voucherAPI(cid).list(),
       ]);
-
       const inv   = invRes.data.data;
       const custs = custRes.data.data || [];
       const supps = suppRes.data.data || [];
       const vcs   = voucRes.data.data || [];
-
       setStats({
         customers:       custs.length,
         suppliers:       supps.length,
@@ -81,7 +81,6 @@ export default function DashboardPage() {
         outOfStock:      inv.summary.outOfStock,
         totalVouchers:   vcs.length,
       });
-
       setRecent(vcs.slice(0, 8));
     } catch {
       toast.error('Failed to load dashboard data');
@@ -91,12 +90,50 @@ export default function DashboardPage() {
   }, [selectedCompany]);
 
   useEffect(() => {
-    if (!token)          { router.push('/login');     return; }
-    if (!selectedCompany){ router.push('/companies'); return; }
-    load();
-  }, [token, selectedCompany, router, load]);
+    if (ready) load();
+  }, [ready, load]);
 
-  if (!selectedCompany) return null;
+  // F5 to refresh
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'F5') { e.preventDefault(); load(); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [load]);
+
+  // Bounds check focusedIdx when recent changes
+  useEffect(() => {
+    setFocusedIdx(-1);
+  }, [recent.length]);
+
+  // Keyboard navigation for recent list
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+      if (isTyping) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, recent.length - 1));
+      }
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, -1));
+      }
+      if (e.key === 'Enter') {
+        if (focusedIdx >= 0 && recent[focusedIdx]) {
+          e.preventDefault();
+          router.push('/vouchers');
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [recent, focusedIdx, router]);
+
+  if (!ready || !selectedCompany) return null;
 
   const statCards = stats
     ? [
@@ -186,8 +223,13 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recent.map((v) => (
-                    <tr key={v.id} onClick={() => router.push('/vouchers')} style={{ cursor: 'pointer' }}>
+                  {recent.map((v, index) => (
+                    <tr
+                      key={v.id}
+                      onClick={() => router.push('/vouchers')}
+                      style={{ cursor: 'pointer' }}
+                      className={focusedIdx === index ? 'focused-row' : ''}
+                    >
                       <td>
                         <span className="mono" style={{ fontSize: 12, color: 'var(--accent-light)' }}>
                           {v.number}

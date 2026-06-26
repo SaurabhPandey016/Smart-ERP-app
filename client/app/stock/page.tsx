@@ -1,11 +1,12 @@
 'use client';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { stockAPI } from '@/lib/api';
-import { useAuthStore, useCompanyStore, useUIStore } from '@/lib/store';
+import { useUIStore } from '@/lib/store';
 import { formatCurrency, GST_RATES } from '@/lib/utils';
+import { useProtectedPage } from '@/lib/useProtectedPage';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,8 +50,7 @@ function stockBadge(qty: number): { label: string; cls: string } {
 
 export default function StockPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
-  const { selectedCompany } = useCompanyStore();
+  const { ready, selectedCompany } = useProtectedPage();
   const { stockModalOpen, closeStockModal } = useUIStore();
 
   const [items, setItems]     = useState<StockItem[]>([]);
@@ -61,6 +61,8 @@ export default function StockPage() {
   const [search, setSearch]   = useState('');
   const [showModal, setShowModal]   = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
+  const [focusedIdx, setFocusedIdx]     = useState(0);
+  const searchRef                       = useRef<HTMLInputElement>(null);
 
   // Unit creation
   const [showUnitForm, setShowUnitForm] = useState(false);
@@ -81,13 +83,11 @@ export default function StockPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stockModalOpen]);
 
-  // ── Auth guard ─────────────────────────────────────────────────────────
+  // ── Fetch on ready ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!token)           { router.push('/login');     return; }
-    if (!selectedCompany) { router.push('/companies'); return; }
-    fetchAll();
+    if (ready) fetchAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCompany, token]);
+  }, [ready]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -201,7 +201,76 @@ export default function StockPage() {
     }
   }
 
-  if (!selectedCompany) return null;
+  // Bounds check focusedIdx when filtered changes
+  useEffect(() => {
+    setFocusedIdx(0);
+  }, [filtered.length]);
+
+  // ── Keyboard navigation ──────────────────────────────────────────────────
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+      // Slash to search
+      if (e.key === '/' && !isTyping) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+
+      // Escape to unfocus or close modals
+      if (e.key === 'Escape') {
+        if (showModal) {
+          setShowModal(false);
+          e.stopPropagation();
+        } else if (showUnitForm) {
+          setShowUnitForm(false);
+          e.stopPropagation();
+        } else if (isTyping) {
+          (document.activeElement as HTMLElement)?.blur();
+        }
+        return;
+      }
+
+      if (isTyping) return;
+      if (showModal || showUnitForm) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, filtered.length - 1));
+      }
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, 0));
+      }
+      if (e.key === 'Enter') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          openEdit(item);
+        }
+      }
+      if (e.key.toLowerCase() === 'e') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          openEdit(item);
+        }
+      }
+      if (e.key.toLowerCase() === 'd') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          handleDelete(item.id);
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filtered, focusedIdx, showModal, showUnitForm]);
+
+  if (!ready || !selectedCompany) return null;
 
   const summary = {
     total:      items.length,
@@ -233,7 +302,8 @@ export default function StockPage() {
         <div className="search-bar" style={{ maxWidth: 320 }}>
           <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>🔍</span>
           <input
-            placeholder="Search by name or SKU..."
+            ref={searchRef}
+            placeholder="Search by name or SKU... (/)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -294,12 +364,12 @@ export default function StockPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => {
+              {filtered.map((item, index) => {
                 const qty    = Number(item.currentStock);
                 const badge  = stockBadge(qty);
                 const profit = Number(item.sellingPrice) - Number(item.purchasePrice);
                 return (
-                  <tr key={item.id}>
+                  <tr key={item.id} className={focusedIdx === index ? 'focused-row' : ''}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{item.name}</div>
                       {item.sku && (

@@ -1,11 +1,12 @@
 'use client';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ledgerAPI } from '@/lib/api';
-import { useAuthStore, useCompanyStore, useUIStore } from '@/lib/store';
+import { useUIStore } from '@/lib/store';
 import { formatCurrency, formatDate, LEDGER_TYPES } from '@/lib/utils';
+import { useProtectedPage } from '@/lib/useProtectedPage';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -67,8 +68,7 @@ const VOUCHER_DEBIT_TYPES = new Set(['SALES', 'DEBIT_NOTE']);
 
 export default function LedgersPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
-  const { selectedCompany } = useCompanyStore();
+  const { ready, selectedCompany } = useProtectedPage();
   const { ledgerModalOpen, closeLedgerModal } = useUIStore();
 
   const [ledgers, setLedgers]           = useState<Ledger[]>([]);
@@ -81,12 +81,14 @@ export default function LedgersPage() {
   const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
   const [statement, setStatement]       = useState<StatementData | null>(null);
   const [loadingStatement, setLoadingStatement] = useState(false);
+  const [focusedIdx, setFocusedIdx]     = useState(0);
+  const searchRef                       = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LedgerFormValues>({
     defaultValues: { name: '', type: 'CUSTOMER', openingBalance: 0, phone: '', email: '', address: '', gstNumber: '' },
   });
 
-  // ── Sync UIStore modal trigger ────────────────────────────────────────────
+  // ── Sync UIStore modal trigger ──────────────────────────────────────────
   useEffect(() => {
     if (ledgerModalOpen) {
       openCreate();
@@ -95,13 +97,11 @@ export default function LedgersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ledgerModalOpen]);
 
-  // ── Auth guard ─────────────────────────────────────────────────────────
+  // ── Fetch on ready ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!token)           { router.push('/login');     return; }
-    if (!selectedCompany) { router.push('/companies'); return; }
-    fetchLedgers();
+    if (ready) fetchLedgers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCompany, token]);
+  }, [ready]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchLedgers = useCallback(async () => {
@@ -168,6 +168,89 @@ export default function LedgersPage() {
     }
   }
 
+  // Bounds check focusedIdx when filtered changes
+  useEffect(() => {
+    setFocusedIdx(0);
+  }, [filtered.length]);
+
+  // ── Keyboard navigation ──────────────────────────────────────────────────
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+      // Slash to search
+      if (e.key === '/' && !isTyping) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+
+      // Escape to unfocus or close modals
+      if (e.key === 'Escape') {
+        if (showModal) {
+          setShowModal(false);
+          e.stopPropagation();
+        } else if (statement) {
+          setStatement(null);
+          e.stopPropagation();
+        } else if (isTyping) {
+          (document.activeElement as HTMLElement)?.blur();
+        }
+        return;
+      }
+
+      if (isTyping) return;
+      if (showModal || statement || loadingStatement) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, filtered.length - 1));
+      }
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, 0));
+      }
+      if (e.key === 'Enter') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          openStatement(item);
+        }
+      }
+      if (e.key.toLowerCase() === 'e') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          openEdit(item);
+        }
+      }
+      if (e.key.toLowerCase() === 'd') {
+        const item = filtered[focusedIdx];
+        if (item) {
+          e.preventDefault();
+          handleDelete(item.id);
+        }
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const tabKeys = TABS.map((t) => t.key);
+        const currIdx = tabKeys.indexOf(activeTab as any);
+        const nextIdx = currIdx === 0 ? tabKeys.length - 1 : currIdx - 1;
+        setActiveTab(tabKeys[nextIdx]);
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const tabKeys = TABS.map((t) => t.key);
+        const currIdx = tabKeys.indexOf(activeTab as any);
+        const nextIdx = currIdx === tabKeys.length - 1 ? 0 : currIdx + 1;
+        setActiveTab(tabKeys[nextIdx]);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filtered, focusedIdx, showModal, statement, loadingStatement, activeTab]);
+
   // ── CRUD ────────────────────────────────────────────────────────────────
   const onSubmit: SubmitHandler<LedgerFormValues> = async (data) => {
     if (!selectedCompany) return;
@@ -221,7 +304,7 @@ export default function LedgersPage() {
     });
   }
 
-  if (!selectedCompany) return null;
+  if (!ready || !selectedCompany) return null;
 
   return (
     <div className="animate-fade-in">
@@ -285,7 +368,8 @@ export default function LedgersPage() {
         <div className="search-bar" style={{ flex: 1, maxWidth: 300 }}>
           <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>🔍</span>
           <input
-            placeholder="Search ledger name..."
+            ref={searchRef}
+            placeholder="Search ledger name... (/)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -332,11 +416,11 @@ export default function LedgersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((l) => {
+              {filtered.map((l, index) => {
                 const bal = Number(l.balance);
                 const isDr = bal >= 0;
                 return (
-                  <tr key={l.id}>
+                  <tr key={l.id} className={focusedIdx === index ? 'focused-row' : ''}>
                     <td>
                       <button
                         onClick={() => openStatement(l)}
