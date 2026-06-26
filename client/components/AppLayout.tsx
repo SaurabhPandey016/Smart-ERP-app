@@ -23,14 +23,14 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const BOTTOM_SHORTCUTS = [
-  { key: 'F8',       label: 'Sales'     },
-  { key: 'F9',       label: 'Purchase'  },
-  { key: 'ALT+L',   label: 'New Ledger'},
-  { key: 'ALT+S',   label: 'New Stock' },
-  { key: 'ALT+M',   label: 'Menu'      },
-  { key: 'CTRL+H',  label: 'Dashboard' },
-  { key: 'CTRL+Q',  label: 'Logout'    },
-  { key: 'ESC',     label: 'Back'      },
+  { key: 'TAB',      label: 'Focus Next' },
+  { key: '← / →',    label: 'Switch Page'},
+  { key: 'ALT+M',    label: 'Menu'       },
+  { key: 'ALT+L',    label: 'New Ledger' },
+  { key: 'ALT+S',    label: 'New Stock'  },
+  { key: 'F8',       label: 'Sales'      },
+  { key: 'F9',       label: 'Purchase'   },
+  { key: 'CTRL+Q',   label: 'Logout'     },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

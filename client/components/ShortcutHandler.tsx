@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/lib/store';
 
 /**
@@ -25,6 +25,7 @@ import { useAuthStore, useUIStore } from '@/lib/store';
  */
 export default function ShortcutHandler() {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuthStore();
   const { openLedgerModal, openStockModal, openVoucherModal } = useUIStore();
 
@@ -79,10 +80,13 @@ export default function ShortcutHandler() {
           router.push('/stock');
           return;
         }
-        if (e.key.toLowerCase() === 'm') {
+        if (e.key.toLowerCase() === 'm' && e.altKey) {
           e.preventDefault();
           const sidebarItems = Array.from(document.querySelectorAll('.sidebar-nav .nav-item')) as HTMLElement[];
-          if (sidebarItems.length > 0) {
+          const activeItem = document.querySelector('.sidebar-nav .nav-item.active') as HTMLElement;
+          if (activeItem) {
+            activeItem.focus();
+          } else if (sidebarItems.length > 0) {
             sidebarItems[0].focus();
           }
           return;
@@ -120,12 +124,49 @@ export default function ShortcutHandler() {
       // ── Escape — go back
       if (e.key === 'Escape') {
         router.back();
+        return;
+      }
+
+      // ── Sidebar focus routing via Arrow keys (when not typing or in a modal)
+      const isModalOpen = !!document.querySelector('.modal-overlay');
+      if (isTyping || isModalOpen) return;
+
+      const activeClass = document.activeElement?.className || '';
+      const isTab = activeClass.includes('tab-btn');
+
+      // ArrowLeft focuses the sidebar
+      if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const isSidebarFocused = !!document.activeElement?.closest('.sidebar');
+        if (!isSidebarFocused && !isTab) {
+          e.preventDefault();
+          const activeItem = document.querySelector('.sidebar-nav .nav-item.active') as HTMLElement;
+          if (activeItem) {
+            activeItem.focus();
+          } else {
+            const firstItem = document.querySelector('.sidebar-nav .nav-item') as HTMLElement;
+            firstItem?.focus();
+          }
+        }
+        return;
+      }
+
+      // ArrowRight focuses the main content from sidebar
+      if (e.key === 'ArrowRight' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const isSidebarFocused = !!document.activeElement?.closest('.sidebar');
+        if (isSidebarFocused) {
+          e.preventDefault();
+          const firstContentEl = document.querySelector('.erp-content input, .erp-content select, .erp-content textarea, .erp-content button, .erp-content a, .erp-content [tabindex="0"]') as HTMLElement;
+          if (firstContentEl) {
+            firstContentEl.focus();
+          }
+        }
+        return;
       }
     }
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [router, logout, openLedgerModal, openStockModal, openVoucherModal]);
+  }, [router, pathname, logout, openLedgerModal, openStockModal, openVoucherModal]);
 
   return null;
 }

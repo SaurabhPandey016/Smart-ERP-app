@@ -200,8 +200,39 @@ export default function LedgersPage() {
         return;
       }
 
+      // Ctrl+Enter to submit modal forms while typing
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        if (showModal) {
+          e.preventDefault();
+          document.getElementById('ledger-form-submit-btn')?.click();
+          return;
+        }
+      }
+
       if (isTyping) return;
       if (showModal || statement || loadingStatement) return;
+
+      const activeEl = document.activeElement as HTMLElement;
+      const isTabFocused = activeEl?.classList.contains('ledger-tab-btn');
+
+      if (isTabFocused) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          const tabButtons = Array.from(document.querySelectorAll('.ledger-tab-btn')) as HTMLElement[];
+          const idx = tabButtons.indexOf(activeEl);
+          const nextIdx = (idx + 1) % tabButtons.length;
+          tabButtons[nextIdx].focus();
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const tabButtons = Array.from(document.querySelectorAll('.ledger-tab-btn')) as HTMLElement[];
+          const idx = tabButtons.indexOf(activeEl);
+          const prevIdx = (idx - 1 + tabButtons.length) % tabButtons.length;
+          tabButtons[prevIdx].focus();
+          return;
+        }
+      }
 
       if (e.key === 'ArrowDown' || e.key === 'j') {
         e.preventDefault();
@@ -232,24 +263,10 @@ export default function LedgersPage() {
           handleDelete(item.id);
         }
       }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const tabKeys = TABS.map((t) => t.key);
-        const currIdx = tabKeys.indexOf(activeTab as any);
-        const nextIdx = currIdx === 0 ? tabKeys.length - 1 : currIdx - 1;
-        setActiveTab(tabKeys[nextIdx]);
-      }
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        const tabKeys = TABS.map((t) => t.key);
-        const currIdx = tabKeys.indexOf(activeTab as any);
-        const nextIdx = currIdx === tabKeys.length - 1 ? 0 : currIdx + 1;
-        setActiveTab(tabKeys[nextIdx]);
-      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [filtered, focusedIdx, showModal, statement, loadingStatement, activeTab]);
+  }, [filtered, focusedIdx, showModal, statement, loadingStatement]);
 
   // ── CRUD ────────────────────────────────────────────────────────────────
   const onSubmit: SubmitHandler<LedgerFormValues> = async (data) => {
@@ -335,6 +352,7 @@ export default function LedgersPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
+              className="ledger-tab-btn"
               style={{
                 padding: '6px 14px',
                 borderRadius: 6,
@@ -387,15 +405,15 @@ export default function LedgersPage() {
       {/* Keyboard navigation helper banner */}
       <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span>💡 <strong>Keyboard Shortcuts:</strong></span>
-        <span>Use <kbd className="shortcut-key">←</kbd> / <kbd className="shortcut-key">→</kbd> arrow keys to switch tabs</span>
+        <span>Use <kbd className="shortcut-key">TAB</kbd> to focus tabs/buttons</span>
         <span>•</span>
-        <span><kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate list</span>
+        <span>Use <kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate ledger list</span>
         <span>•</span>
         <span>Press <kbd className="shortcut-key">Enter</kbd> to view statement</span>
         <span>•</span>
-        <span>Press <kbd className="shortcut-key">E</kbd> to edit</span>
+        <span>Press <kbd className="shortcut-key">E</kbd> to edit ledger</span>
         <span>•</span>
-        <span>Press <kbd className="shortcut-key">D</kbd> to delete</span>
+        <span>Press <kbd className="shortcut-key">D</kbd> to delete ledger</span>
       </div>
 
       {/* ── Table */}
@@ -514,7 +532,7 @@ export default function LedgersPage() {
       {/* ── Create / Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="modal" style={{ maxWidth: 680, width: '95vw' }}>
+          <div className="modal modal-ledger">
             <div className="modal-header">
               <div className="modal-title">
                 {editingLedger ? '✏️ Edit Ledger' : '📒 Create Ledger'}
@@ -602,13 +620,18 @@ export default function LedgersPage() {
                 </div>
               </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : editingLedger ? 'Update' : 'Create Ledger'}
-                </button>
+              <div className="modal-footer" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  <kbd className="shortcut-key">Ctrl+Enter</kbd> to save · <kbd className="shortcut-key">Esc</kbd> to close
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" id="ledger-form-submit-btn" className="btn btn-primary" disabled={saving}>
+                    {saving ? 'Saving...' : editingLedger ? 'Update' : 'Create Ledger'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

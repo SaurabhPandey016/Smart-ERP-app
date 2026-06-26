@@ -41,13 +41,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/companies', authenticate, companyRoutes);
 
 // ── Company-scoped Routes (require JWT + company ownership)
-app.use('/api/:companyId/ledgers',    authenticate, companyContext, ledgerRoutes);
-app.use('/api/:companyId/stock',      authenticate, companyContext, stockRoutes);
-app.use('/api/:companyId/vouchers',   authenticate, companyContext, voucherRoutes);
-app.use('/api/:companyId/inventory',  authenticate, companyContext, inventoryRoutes);
-app.use('/api/:companyId/customers',  authenticate, companyContext, customerRoutes);
-app.use('/api/:companyId/suppliers',  authenticate, companyContext, supplierRoutes);
-app.use('/api/:companyId/reports',    authenticate, companyContext, reportRoutes);
+app.use('/api/:companyId/ledgers', authenticate, companyContext, ledgerRoutes);
+app.use('/api/:companyId/stock', authenticate, companyContext, stockRoutes);
+app.use('/api/:companyId/vouchers', authenticate, companyContext, voucherRoutes);
+app.use('/api/:companyId/inventory', authenticate, companyContext, inventoryRoutes);
+app.use('/api/:companyId/customers', authenticate, companyContext, customerRoutes);
+app.use('/api/:companyId/suppliers', authenticate, companyContext, supplierRoutes);
+app.use('/api/:companyId/reports', authenticate, companyContext, reportRoutes);
 
 // ── Error Handling
 app.use(notFound);

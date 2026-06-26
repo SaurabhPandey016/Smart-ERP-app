@@ -325,8 +325,54 @@ export default function VouchersPage() {
         return;
       }
 
+      // ── Keyboard shortcuts when voucher modal is open ──
+      if (showModal) {
+        // Ctrl+Enter or Cmd+Enter to submit
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          document.getElementById('voucher-form-submit-btn')?.click();
+          return;
+        }
+        // Alt+A to add new line item
+        if (e.key.toLowerCase() === 'a' && e.altKey) {
+          e.preventDefault();
+          append({ ...DEFAULT_ITEM });
+          return;
+        }
+        // Alt+D to remove last line item
+        if (e.key.toLowerCase() === 'd' && e.altKey) {
+          e.preventDefault();
+          if (fields.length > 1) {
+            remove(fields.length - 1);
+          }
+          return;
+        }
+        return; // Don't fall through to table key bindings
+      }
+
       if (isTyping) return;
-      if (showModal) return;
+
+      const activeEl = document.activeElement as HTMLElement;
+      const isTabFocused = activeEl?.classList.contains('voucher-tab-btn');
+
+      if (isTabFocused) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          const tabButtons = Array.from(document.querySelectorAll('.voucher-tab-btn')) as HTMLElement[];
+          const idx = tabButtons.indexOf(activeEl);
+          const nextIdx = (idx + 1) % tabButtons.length;
+          tabButtons[nextIdx].focus();
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const tabButtons = Array.from(document.querySelectorAll('.voucher-tab-btn')) as HTMLElement[];
+          const idx = tabButtons.indexOf(activeEl);
+          const prevIdx = (idx - 1 + tabButtons.length) % tabButtons.length;
+          tabButtons[prevIdx].focus();
+          return;
+        }
+      }
 
       if (e.key === 'ArrowDown' || e.key === 'j') {
         e.preventDefault();
@@ -352,25 +398,10 @@ export default function VouchersPage() {
           handleCancel(item.id);
         }
       }
-      // ArrowLeft/ArrowRight to switch tabs
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const tabKeys: VoucherTab[] = ['SALES', 'PURCHASE', 'ALL'];
-        const currIdx = tabKeys.indexOf(activeTab);
-        const nextIdx = currIdx === 0 ? tabKeys.length - 1 : currIdx - 1;
-        setActiveTab(tabKeys[nextIdx]);
-      }
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        const tabKeys: VoucherTab[] = ['SALES', 'PURCHASE', 'ALL'];
-        const currIdx = tabKeys.indexOf(activeTab);
-        const nextIdx = currIdx === tabKeys.length - 1 ? 0 : currIdx + 1;
-        setActiveTab(tabKeys[nextIdx]);
-      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [filtered, focusedIdx, showModal, activeTab]);
+  }, [filtered, focusedIdx, showModal, fields.length, append, remove]);
 
   if (!ready || !selectedCompany) return null;
 
@@ -446,13 +477,13 @@ export default function VouchersPage() {
       {/* Keyboard navigation helper banner */}
       <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span>💡 <strong>Keyboard Shortcuts:</strong></span>
-        <span>Use <kbd className="shortcut-key">←</kbd> / <kbd className="shortcut-key">→</kbd> keys to switch tabs</span>
+        <span>Use <kbd className="shortcut-key">TAB</kbd> to focus tabs/buttons</span>
         <span>•</span>
-        <span>Use <kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate list</span>
+        <span>Use <kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate voucher list</span>
         <span>•</span>
         <span>Press <kbd className="shortcut-key">Enter</kbd> or <kbd className="shortcut-key">P</kbd> to download PDF</span>
         <span>•</span>
-        <span>Press <kbd className="shortcut-key">C</kbd> to Cancel posted voucher</span>
+        <span>Press <kbd className="shortcut-key">C</kbd> to cancel posted voucher</span>
       </div>
 
       {/* ── Vouchers table */}
@@ -588,8 +619,7 @@ export default function VouchersPage() {
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
         >
           <div
-            className="modal"
-            style={{ maxWidth: 960, width: '95vw' }}
+            className="modal modal-voucher"
           >
             {/* Header */}
             <div className="modal-header">
@@ -639,6 +669,7 @@ export default function VouchersPage() {
                     </label>
                     <select
                       className="input select"
+                      autoFocus
                       {...register('partyLedgerId')}
                     >
                       <option value="">— Select {modalType === 'SALES' ? 'Customer' : 'Supplier'} —</option>
@@ -910,10 +941,21 @@ export default function VouchersPage() {
               </div>
 
               {/* Footer */}
-              <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {fields.length} line item{fields.length !== 1 ? 's' : ''} · 
-                  Grand Total: <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(totals.grandTotal)}</strong>
+              <div className="modal-footer" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
+                  <div>
+                    {fields.length} line item{fields.length !== 1 ? 's' : ''} · 
+                    Grand Total: <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(totals.grandTotal)}</strong>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'flex', gap: 6 }}>
+                    <span><kbd className="shortcut-key">Ctrl+Enter</kbd> Save</span>
+                    <span>·</span>
+                    <span><kbd className="shortcut-key">Esc</kbd> Close</span>
+                    <span>·</span>
+                    <span><kbd className="shortcut-key">Alt+A</kbd> Add Line</span>
+                    <span>·</span>
+                    <span><kbd className="shortcut-key">Alt+D</kbd> Del Line</span>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
@@ -923,7 +965,7 @@ export default function VouchersPage() {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                  <button type="submit" id="voucher-form-submit-btn" className="btn btn-primary" disabled={saving}>
                     {saving ? 'Creating...' : `Create ${TYPE_LABELS[modalType]} Voucher`}
                   </button>
                 </div>

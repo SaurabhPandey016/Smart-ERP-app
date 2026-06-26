@@ -134,6 +134,10 @@ export default function DashboardPage() {
           setFocusedIdx(-1);
         }
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        // Let left arrow on the first element escape to focus the sidebar
+        if ((currentIndex === 0 || currentIndex === -1) && e.key === 'ArrowLeft') {
+          return;
+        }
         e.preventDefault();
         const prevIndex = currentIndex === -1 || currentIndex === 0 ? navigables.length - 1 : currentIndex - 1;
         navigables[prevIndex].focus();
