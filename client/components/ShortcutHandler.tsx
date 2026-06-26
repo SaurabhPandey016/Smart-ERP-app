@@ -79,6 +79,14 @@ export default function ShortcutHandler() {
           router.push('/stock');
           return;
         }
+        if (e.key.toLowerCase() === 'm') {
+          e.preventDefault();
+          const sidebarItems = Array.from(document.querySelectorAll('.sidebar-nav .nav-item')) as HTMLElement[];
+          if (sidebarItems.length > 0) {
+            sidebarItems[0].focus();
+          }
+          return;
+        }
         if (e.key === 'F8') {
           e.preventDefault();
           openVoucherModal('SALES');

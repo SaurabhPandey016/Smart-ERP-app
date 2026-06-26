@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore, useCompanyStore } from '@/lib/store';
@@ -26,6 +27,7 @@ const BOTTOM_SHORTCUTS = [
   { key: 'F9',       label: 'Purchase'  },
   { key: 'ALT+L',   label: 'New Ledger'},
   { key: 'ALT+S',   label: 'New Stock' },
+  { key: 'ALT+M',   label: 'Menu'      },
   { key: 'CTRL+H',  label: 'Dashboard' },
   { key: 'CTRL+Q',  label: 'Logout'    },
   { key: 'ESC',     label: 'Back'      },
@@ -36,6 +38,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router    = useRouter();
   const { user, logout }         = useAuthStore();
   const { selectedCompany }      = useCompanyStore();
+
+  // Sidebar arrow-key navigation
+  useEffect(() => {
+    function handleSidebarKeys(e: KeyboardEvent) {
+      const activeEl = document.activeElement as HTMLElement;
+      if (!activeEl || !activeEl.classList.contains('nav-item')) return;
+
+      const navItems = Array.from(document.querySelectorAll('.sidebar-nav .nav-item')) as HTMLElement[];
+      if (navItems.length === 0) return;
+
+      const idx = navItems.indexOf(activeEl);
+      if (idx === -1) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIdx = (idx + 1) % navItems.length;
+        navItems[nextIdx].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIdx = (idx - 1 + navItems.length) % navItems.length;
+        navItems[prevIdx].focus();
+      }
+    }
+
+    window.addEventListener('keydown', handleSidebarKeys);
+    return () => window.removeEventListener('keydown', handleSidebarKeys);
+  }, []);
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 

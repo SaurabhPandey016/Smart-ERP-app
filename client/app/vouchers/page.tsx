@@ -443,6 +443,18 @@ export default function VouchersPage() {
         ))}
       </div>
 
+      {/* Keyboard navigation helper banner */}
+      <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span>💡 <strong>Keyboard Shortcuts:</strong></span>
+        <span>Use <kbd className="shortcut-key">←</kbd> / <kbd className="shortcut-key">→</kbd> keys to switch tabs</span>
+        <span>•</span>
+        <span>Use <kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate list</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">Enter</kbd> or <kbd className="shortcut-key">P</kbd> to download PDF</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">C</kbd> to Cancel posted voucher</span>
+      </div>
+
       {/* ── Vouchers table */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -577,7 +589,7 @@ export default function VouchersPage() {
         >
           <div
             className="modal"
-            style={{ maxWidth: 820, width: '95vw' }}
+            style={{ maxWidth: 960, width: '95vw' }}
           >
             {/* Header */}
             <div className="modal-header">
@@ -620,7 +632,7 @@ export default function VouchersPage() {
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="modal-body" style={{ paddingBottom: 8 }}>
                 {/* ── Top row: party + date + notes ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', gap: 12, marginBottom: 16 }}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
                   <div className="form-group">
                     <label className="form-label">
                       {modalType === 'SALES' ? '👥 Customer' : '🏭 Supplier'} (Party)
@@ -692,7 +704,8 @@ export default function VouchersPage() {
                     )}
                   </div>
 
-                  <div className="line-items-table">
+                  <div style={{ overflowX: 'auto', width: '100%', marginBottom: 12 }}>
+                    <div className="line-items-table" style={{ minWidth: 680 }}>
                     {/* Header */}
                     <div
                       style={{
@@ -738,10 +751,10 @@ export default function VouchersPage() {
                           }}
                         >
                           {/* Item / Description */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <select
                               className="input"
-                              style={{ fontSize: 12, padding: '5px 8px' }}
+                              style={{ fontSize: 11, padding: '3px 6px' }}
                               {...register(`items.${idx}.stockItemId`)}
                               onChange={(e) => {
                                 register(`items.${idx}.stockItemId`).onChange(e);
@@ -758,7 +771,7 @@ export default function VouchersPage() {
                             <input
                               className="input"
                               placeholder="Or type description..."
-                              style={{ fontSize: 11, padding: '4px 8px' }}
+                              style={{ fontSize: 11, padding: '3px 6px' }}
                               {...register(`items.${idx}.description`)}
                             />
                           </div>
@@ -770,7 +783,7 @@ export default function VouchersPage() {
                             step="0.001"
                             min="0.001"
                             placeholder="1"
-                            style={{ fontSize: 12, padding: '5px 8px', textAlign: 'right' }}
+                            style={{ fontSize: 11, padding: '3px 6px', textAlign: 'right' }}
                             {...register(`items.${idx}.quantity`, { valueAsNumber: true })}
                           />
 
@@ -782,7 +795,7 @@ export default function VouchersPage() {
                               step="0.01"
                               min="0"
                               placeholder="0.00"
-                              style={{ fontSize: 12, padding: '5px 8px', textAlign: 'right' }}
+                              style={{ fontSize: 11, padding: '3px 6px', textAlign: 'right' }}
                               {...register(`items.${idx}.rate`, { valueAsNumber: true })}
                             />
                             {amt > 0 && (
@@ -796,7 +809,7 @@ export default function VouchersPage() {
                           <div>
                             <select
                               className="input select"
-                              style={{ fontSize: 12, padding: '5px 8px' }}
+                              style={{ fontSize: 11, padding: '3px 6px' }}
                               {...register(`items.${idx}.gstPercent`, { valueAsNumber: true })}
                             >
                               {[0, 5, 12, 18, 28].map((r) => (
@@ -816,7 +829,7 @@ export default function VouchersPage() {
                             className="btn btn-danger btn-icon"
                             onClick={() => fields.length > 1 && remove(idx)}
                             disabled={fields.length === 1}
-                            style={{ padding: '5px 8px', fontSize: 14 }}
+                            style={{ padding: '3px 6px', fontSize: 12 }}
                             title="Remove line"
                           >
                             ×
@@ -835,6 +848,7 @@ export default function VouchersPage() {
                       >
                         + Add Line Item
                       </button>
+                    </div>
                     </div>
                   </div>
                 </div>

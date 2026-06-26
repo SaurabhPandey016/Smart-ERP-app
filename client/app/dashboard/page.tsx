@@ -107,25 +107,49 @@ export default function DashboardPage() {
     setFocusedIdx(-1);
   }, [recent.length]);
 
-  // Keyboard navigation for recent list
+  // Keyboard navigation for all dashboard items
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (document.activeElement as HTMLElement)?.tagName;
       const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
       if (isTyping) return;
 
-      if (e.key === 'ArrowDown' || e.key === 'j') {
+      const navigables = Array.from(document.querySelectorAll('.db-navigable')) as HTMLElement[];
+      if (navigables.length === 0) return;
+
+      const activeEl = document.activeElement as HTMLElement;
+      let currentIndex = navigables.indexOf(activeEl);
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
-        setFocusedIdx((i) => Math.min(i + 1, recent.length - 1));
-      }
-      if (e.key === 'ArrowUp' || e.key === 'k') {
+        const nextIndex = currentIndex === -1 || currentIndex === navigables.length - 1 ? 0 : currentIndex + 1;
+        navigables[nextIndex].focus();
+        
+        const parentTable = navigables[nextIndex].closest('tbody');
+        if (parentTable) {
+          const rows = Array.from(parentTable.querySelectorAll('tr.db-navigable'));
+          const rIdx = rows.indexOf(navigables[nextIndex]);
+          setFocusedIdx(rIdx);
+        } else {
+          setFocusedIdx(-1);
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
-        setFocusedIdx((i) => Math.max(i - 1, -1));
-      }
-      if (e.key === 'Enter') {
-        if (focusedIdx >= 0 && recent[focusedIdx]) {
+        const prevIndex = currentIndex === -1 || currentIndex === 0 ? navigables.length - 1 : currentIndex - 1;
+        navigables[prevIndex].focus();
+
+        const parentTable = navigables[prevIndex].closest('tbody');
+        if (parentTable) {
+          const rows = Array.from(parentTable.querySelectorAll('tr.db-navigable'));
+          const rIdx = rows.indexOf(navigables[prevIndex]);
+          setFocusedIdx(rIdx);
+        } else {
+          setFocusedIdx(-1);
+        }
+      } else if (e.key === 'Enter') {
+        if (currentIndex !== -1) {
           e.preventDefault();
-          router.push('/vouchers');
+          activeEl.click();
         }
       }
     }
@@ -176,7 +200,7 @@ export default function DashboardPage() {
       ) : (
         <div className="grid-4" style={{ marginBottom: 24 }}>
           {statCards.map((s) => (
-            <div key={s.label} className="stat-card">
+            <div key={s.label} className="stat-card db-navigable" tabIndex={0}>
               <div className="stat-icon" style={{ color: s.color }}>{s.icon}</div>
               <div className="stat-value" style={{ color: s.isMoney ? s.color : undefined }}>
                 {String(s.value)}
@@ -228,7 +252,8 @@ export default function DashboardPage() {
                       key={v.id}
                       onClick={() => router.push('/vouchers')}
                       style={{ cursor: 'pointer' }}
-                      className={focusedIdx === index ? 'focused-row' : ''}
+                      className={`db-navigable ${focusedIdx === index ? 'focused-row' : ''}`}
+                      tabIndex={0}
                     >
                       <td>
                         <span className="mono" style={{ fontSize: 12, color: 'var(--accent-light)' }}>
@@ -282,7 +307,7 @@ export default function DashboardPage() {
               {quickActions.map((a) => (
                 <button
                   key={a.label}
-                  className="btn btn-secondary"
+                  className="btn btn-secondary db-navigable"
                   onClick={a.action}
                   style={{ justifyContent: 'flex-start', gap: 10 }}
                 >
@@ -299,7 +324,7 @@ export default function DashboardPage() {
             <div className="card-header">
               <div className="card-title">🏢 Company Info</div>
               <button
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-sm db-navigable"
                 onClick={() => router.push('/companies')}
                 title="F1 — Switch Company"
               >

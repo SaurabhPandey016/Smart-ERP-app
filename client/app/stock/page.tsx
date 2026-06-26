@@ -318,6 +318,16 @@ export default function StockPage() {
         </span>
       </div>
 
+      {/* Keyboard navigation helper banner */}
+      <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span>💡 <strong>Keyboard Shortcuts:</strong></span>
+        <span>Use <kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate items</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">Enter</kbd> or <kbd className="shortcut-key">E</kbd> to edit</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">D</kbd> to delete item</span>
+      </div>
+
       {/* ── Stats row */}
       <div className="grid-4" style={{ marginBottom: 16 }}>
         {[
@@ -510,7 +520,7 @@ export default function StockPage() {
 
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label className="form-label">Item Name *</label>
                     <input

@@ -384,6 +384,20 @@ export default function LedgersPage() {
         </div>
       </div>
 
+      {/* Keyboard navigation helper banner */}
+      <div style={{ marginBottom: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span>💡 <strong>Keyboard Shortcuts:</strong></span>
+        <span>Use <kbd className="shortcut-key">←</kbd> / <kbd className="shortcut-key">→</kbd> arrow keys to switch tabs</span>
+        <span>•</span>
+        <span><kbd className="shortcut-key">Arrow Up</kbd> / <kbd className="shortcut-key">Arrow Down</kbd> to navigate list</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">Enter</kbd> to view statement</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">E</kbd> to edit</span>
+        <span>•</span>
+        <span>Press <kbd className="shortcut-key">D</kbd> to delete</span>
+      </div>
+
       {/* ── Table */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -500,7 +514,7 @@ export default function LedgersPage() {
       {/* ── Create / Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="modal">
+          <div className="modal" style={{ maxWidth: 680, width: '95vw' }}>
             <div className="modal-header">
               <div className="modal-title">
                 {editingLedger ? '✏️ Edit Ledger' : '📒 Create Ledger'}
@@ -516,7 +530,7 @@ export default function LedgersPage() {
 
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label className="form-label">Name *</label>
                     <input

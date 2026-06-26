@@ -459,10 +459,10 @@ export default function CompaniesPage() {
 
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="modal-body">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
                   {/* Full-width name */}
-                  <div className="form-group col-span-2">
+                  <div className="form-group col-span-1 md:col-span-2">
                     <label className="form-label">Company Name *</label>
                     <input
                       className="input"
@@ -498,12 +498,12 @@ export default function CompaniesPage() {
                     <input className="input" placeholder="+91 98765 43210" {...register('phone')} />
                   </div>
 
-                  <div className="form-group col-span-2">
+                  <div className="form-group col-span-1 md:col-span-2">
                     <label className="form-label">Email</label>
                     <input className="input" type="email" placeholder="business@company.com" {...register('email')} />
                   </div>
 
-                  <div className="form-group col-span-2">
+                  <div className="form-group col-span-1 md:col-span-2">
                     <label className="form-label">Address</label>
                     <textarea
                       className="input textarea"
