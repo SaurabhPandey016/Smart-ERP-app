@@ -546,8 +546,8 @@ tbody tr.focused-row {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  width: 100%;
-  max-width: 560px;
+  width: 85%;
+  max-width: 460px;
   /* No max-height / overflow here — let overlay handle scrolling */
   flex-shrink: 0;
   animation: slideIn 0.2s ease;
@@ -557,7 +557,7 @@ tbody tr.focused-row {
   /* Resizing capability */
   resize: both;
   overflow: hidden;
-  min-width: 360px;
+  min-width: 260px;
   min-height: 250px;
 }
 
@@ -594,12 +594,12 @@ tbody tr.focused-row {
 /* Responsive heights and widths for modals to use more vertical/horizontal space */
 .modal-ledger {
   max-width: 800px !important;
-  width: 95vw;
+  width: 90vw;
 }
 
 .modal-voucher {
   max-width: 1280px !important;
-  width: 95vw;
+  width: 90vw;
 }
 
 @media (min-height: 700px) {

@@ -8,6 +8,7 @@
     "dev": "nodemon src/app.js",
     "test": "vitest",
     "start": "node src/app.js",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
