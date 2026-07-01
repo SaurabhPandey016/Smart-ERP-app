@@ -662,7 +662,7 @@ export default function VouchersPage() {
             <form onSubmit={handleSubmit(onSubmit)}>
               <div className="modal-body" style={{ paddingBottom: 8 }}>
                 {/* ── Top row: party + date + notes ── */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+                <div className="mb-4 grid grid-cols-1 gap-3.5 lg:grid-cols-3">
                   <div className="form-group">
                     <label className="form-label">
                       {modalType === 'SALES' ? '👥 Customer' : '🏭 Supplier'} (Party)
@@ -736,12 +736,12 @@ export default function VouchersPage() {
                   </div>
 
                   <div style={{ overflowX: 'auto', width: '100%', marginBottom: 12 }}>
-                    <div className="line-items-table" style={{ minWidth: 680 }}>
+                    <div className="line-items-table" style={{ minWidth: 520 }}>
                     {/* Header */}
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '2.5fr 1fr 1fr 0.8fr auto',
+                        gridTemplateColumns: 'minmax(170px,2.2fr) 72px 88px 68px 42px',
                         gap: 6,
                         padding: '8px 10px',
                         background: 'var(--bg-secondary)',
@@ -774,7 +774,7 @@ export default function VouchersPage() {
                           key={field.id}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: '2.5fr 1fr 1fr 0.8fr auto',
+                            gridTemplateColumns: 'minmax(170px,2.2fr) 72px 88px 68px 42px',
                             gap: 6,
                             padding: '6px 10px',
                             borderBottom: '1px solid var(--border)',

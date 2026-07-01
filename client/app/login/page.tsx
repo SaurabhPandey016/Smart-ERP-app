@@ -116,14 +116,12 @@ export default function LoginPage() {
 
       {/* Card */}
       <div
+        className="relative w-full rounded-2xl"
         style={{
-          position: 'relative',
-          width: '100%',
           maxWidth: 420,
+          padding: '44px 40px',
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: 16,
-          padding: '36px 32px',
           boxShadow: '0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.08)',
           animation: 'fadeIn 0.3s ease',
         }}
@@ -158,14 +156,8 @@ export default function LoginPage() {
 
         {/* Tab switcher */}
         <div
-          style={{
-            display: 'flex',
-            background: 'var(--bg-secondary)',
-            borderRadius: 8,
-            padding: 3,
-            marginBottom: 22,
-            gap: 2,
-          }}
+          className="mb-6 flex rounded-xl p-1"
+          style={{ background: 'var(--bg-secondary)' }}
         >
           {[
             { key: true, label: 'Sign In' },
@@ -175,17 +167,10 @@ export default function LoginPage() {
               key={String(tab.key)}
               type="button"
               onClick={() => { setIsLogin(tab.key); reset(); }}
+              className="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
               style={{
-                flex: 1,
-                padding: '7px 0',
-                borderRadius: 6,
-                border: 'none',
                 background: isLogin === tab.key ? 'var(--accent)' : 'transparent',
                 color: isLogin === tab.key ? 'white' : 'var(--text-muted)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
               }}
             >
               {tab.label}
@@ -253,19 +238,8 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  padding: 4,
-                  lineHeight: 1,
-                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-2 transition"
+                style={{ color: 'var(--text-muted)' }}
                 tabIndex={-1}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -280,16 +254,9 @@ export default function LoginPage() {
           {/* Submit */}
           <button
             type="submit"
-            className="btn btn-primary"
+            className="mt-1 flex h-12 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: 'var(--accent)', boxShadow: '0 10px 30px color-mix(in srgb, var(--accent), transparent 60%)' }}
             disabled={loading}
-            style={{
-              width: '100%',
-              padding: '11px',
-              fontSize: 14,
-              fontWeight: 600,
-              borderRadius: 8,
-              letterSpacing: '0.2px',
-            }}
           >
             {loading
               ? isLogin ? 'Signing in...' : 'Creating account...'
